@@ -1,0 +1,2 @@
+data/7072196/Cicadidae.zip filter=lfs diff=lfs merge=lfs -text
+data/7072196/Orthoptera.zip filter=lfs diff=lfs merge=lfs -text

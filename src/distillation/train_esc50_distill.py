@@ -19,8 +19,8 @@ LABELS = ["bird", "human", "motor", "nature"]
 NUM_CLASSES = len(LABELS)
 label_to_id = {label: i for i, label in enumerate(LABELS)}
 
-ALPHA = 0.5
-TEMPERATURE = 3.0
+ALPHA = 0.8
+TEMPERATURE = 2.0
 
 
 def load_audio(path):
@@ -99,8 +99,10 @@ def distillation_loss(y_true_hard, y_true_soft, student_logits):
         from_logits=True,
     )
 
-    teacher_soft = tf.nn.softmax(y_true_soft / TEMPERATURE)
     student_soft = tf.nn.softmax(student_logits / TEMPERATURE)
+
+    # y_true_soft est déjà une distribution de probabilité
+    teacher_soft = tf.cast(y_true_soft, tf.float32)
 
     kl = tf.keras.losses.KLDivergence()(
         teacher_soft,

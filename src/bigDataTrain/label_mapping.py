@@ -88,7 +88,7 @@ FSD50K_KEYWORDS = {
         "speech", "conversation", "talking", "voice", "shout", "scream",
         "laugh", "laughter", "cry", "crying", "cough", "sneeze",
         "footstep", "footsteps", "clap", "clapping", "singing",
-        "whisper", "breathing", "snoring",
+        "whisper", "breathing", "snoring","Music","Wind_instrument"
     ],
     "motor": [
         "engine", "motor", "vehicle", "car", "truck", "bus", "motorcycle",

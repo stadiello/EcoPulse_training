@@ -56,7 +56,7 @@ poetry add tensorflow pandas numpy scikit-learn
 ## Étape 1 — fusionner et labelliser
 
 ```bash
-python build_dataset.py
+poetry run python src/bigDataTrain/build_dataset.py
 ```
 
 Sortie :
@@ -68,7 +68,7 @@ prepared_dataset/ecopulse_esc50_fsd50k.csv
 ## Étape 2 — entraîner
 
 ```bash
-python train_model.py
+poetry run python src/bigDataTrain/train_model.py
 ```
 
 Sorties :

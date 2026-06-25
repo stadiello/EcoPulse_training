@@ -74,7 +74,7 @@ def build_fsd50k_dataframe(split: str) -> pd.DataFrame:
     split: 'dev' ou 'eval'
     """
     gt_path = FSD50K_ROOT / "FSD50K.ground_truth" / f"{split}.csv"
-    audio_dir = FSD50K_ROOT / f"FSD50K.{split}_audio"
+    audio_dir = FSD50K_ROOT / f"FSD50K.{split}_audio_16k"
 
     if not gt_path.exists():
         print(f"[WARN] FSD50K metadata absent : {gt_path}")
@@ -109,15 +109,20 @@ def build_fsd50k_dataframe(split: str) -> pd.DataFrame:
 
 
 def balance_dataframe(df: pd.DataFrame, max_per_class: int = 3000) -> pd.DataFrame:
-    """
-    Évite que FSD50K écrase ESC-50 avec trop de 'other', 'human', 'motor'.
-    """
-    balanced = (
-        df.groupby("label", group_keys=False)
-        .apply(lambda x: x.sample(min(len(x), max_per_class), random_state=SEED))
-        .reset_index(drop=True)
-    )
-    return balanced
+    sampled_parts = []
+
+    for _, class_df in df.groupby("label"):
+        sampled_parts.append(
+            class_df.sample(
+                n=min(len(class_df), max_per_class),
+                random_state=SEED,
+            )
+        )
+
+    return pd.concat(sampled_parts, ignore_index=True).sample(
+        frac=1.0,
+        random_state=SEED,
+    ).reset_index(drop=True)
 
 
 def add_train_val_test_split(df: pd.DataFrame) -> pd.DataFrame:

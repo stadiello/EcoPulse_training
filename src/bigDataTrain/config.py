@@ -4,17 +4,17 @@ from pathlib import Path
 # Paths à adapter à ta machine
 # =========================
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+# PROJECT_ROOT = Path(__file__).resolve().parent
 
-DATA_ROOT = PROJECT_ROOT / "data"
+DATA_ROOT = Path("data")
 
 ESC50_ROOT = DATA_ROOT / "ESC-50"
-FSD50K_ROOT = "/Volumes/Extreme SSD/data/4060432"
+FSD50K_ROOT = Path("/Volumes/Extreme SSD/data/4060432")
 
-OUTPUT_ROOT = PROJECT_ROOT / "prepared_dataset"
+OUTPUT_ROOT = Path("prepared_dataset")
 OUTPUT_ROOT.mkdir(exist_ok=True, parents=True)
 
-MERGED_CSV = OUTPUT_ROOT / "ecopulse_esc50_fsd50k.csv"
+MERGED_CSV = Path("data/ecopulse_esc50_fsd50k.csv")
 
 # =========================
 # Taxonomie EcoPulse

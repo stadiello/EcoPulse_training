@@ -70,3 +70,6 @@ convert_dir "/Volumes/Extreme SSD/data/4060432/FSD50K.dev_audio" \
 
 convert_dir "/Volumes/Extreme SSD/data/4060432/FSD50K.eval_audio" \
             "/Volumes/Extreme SSD/data/4060432/FSD50K.eval_audio_16k"
+
+# convert_dir "data/7072196/audio" \
+#             "data/7072196/audio_16k"

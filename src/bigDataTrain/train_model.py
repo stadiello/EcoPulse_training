@@ -43,6 +43,10 @@ def make_dataset(df: pd.DataFrame, training: bool) -> tf.data.Dataset:
         ds = ds.shuffle(buffer_size=len(df), seed=SEED, reshuffle_each_iteration=True)
 
     ds = ds.map(load_example, num_parallel_calls=tf.data.AUTOTUNE)
+    # ds = ds.map(
+    #     lambda fp, y: load_example(fp, y, training=training),
+    #     num_parallel_calls=tf.data.AUTOTUNE,
+    # )
     ds = ds.batch(BATCH_SIZE)
     ds = ds.prefetch(tf.data.AUTOTUNE)
 

@@ -228,38 +228,17 @@ def map_esc50_label(category: str) -> Optional[str]:
     return ESC50_MAP.get(str(category).strip(), None)
 
 
-def map_fsd50k_labels(labels: str) -> Optional[str]:
-    """
-    FSD50K contient souvent plusieurs labels par fichier.
+def map_fsd50k_labels(labels: str) -> str | None:
+    fsd_labels = [label.strip() for label in str(labels).split(",")]
 
-    Stratégie :
-    1. Split exact par virgule.
-    2. Exclusion de la musique/instruments si aucun label utile prioritaire n'est présent.
-    3. Mapping exact label -> classe EcoPulse.
-    4. Priorité explicite si plusieurs classes sont présentes.
+    detected_targets = set()
 
-    On évite volontairement les tests de sous-chaînes :
-    "Crow" ne doit pas matcher "Crowd".
-    """
-    fsd_labels = [label.strip() for label in str(labels).split(",") if label.strip()]
+    for label in fsd_labels:
+        target = FSD50K_LABEL_MAP.get(label)
+        if target is not None:
+            detected_targets.add(target)
 
-    detected_targets = {
-        FSD50K_LABEL_MAP[label]
-        for label in fsd_labels
-        if label in FSD50K_LABEL_MAP
-    }
+    if len(detected_targets) != 1:
+        return None
 
-    priority = [
-        "bird",
-        "insect",
-        "motor",
-        "rain_wind",
-        "animal",
-        "human",
-    ]
-
-    for target in priority:
-        if target in detected_targets:
-            return target
-
-    return None
+    return next(iter(detected_targets))

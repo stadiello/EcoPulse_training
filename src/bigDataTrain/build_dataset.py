@@ -1,33 +1,17 @@
 """
 Fusion ESC-50 + FSD50K vers un CSV unique EcoPulse.
 
-Structure attendue :
-
-data/
-  ESC-50/
-    audio/
-      1-100032-A-0.wav
-      ...
-    meta/
-      esc50.csv
-
-  FSD50K/
-    FSD50K.dev_audio/
-      *.wav
-    FSD50K.eval_audio/
-      *.wav
-    FSD50K.ground_truth/
-      dev.csv
-      eval.csv
-
 Sortie :
-prepared_dataset/ecopulse_esc50_fsd50k.csv
+data/ecopulse_esc50_fsd50k.csv
 
 Colonnes :
-filepath, source, original_label, label, label_id
+filepath, source, original_label, label, label_id, split
+
+Note :
+- Pas de classe "other".
+- Les fichiers hors taxonomie retournent None et sont exclus.
 """
 
-from pathlib import Path
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
@@ -51,12 +35,17 @@ def build_esc50_dataframe() -> pd.DataFrame:
     df = pd.read_csv(meta_path)
 
     rows = []
+    excluded = 0
+
     for _, row in df.iterrows():
         filepath = audio_dir / row["filename"]
         if not filepath.exists():
             continue
 
         label = map_esc50_label(row["category"])
+        if label is None:
+            excluded += 1
+            continue
 
         rows.append({
             "filepath": str(filepath),
@@ -66,6 +55,7 @@ def build_esc50_dataframe() -> pd.DataFrame:
             "label_id": CLASS_TO_ID[label],
         })
 
+    print(f"[INFO] ESC-50 exclus : {excluded}")
     return pd.DataFrame(rows)
 
 
@@ -75,27 +65,47 @@ def build_fsd50k_dataframe(split: str) -> pd.DataFrame:
     """
     gt_path = FSD50K_ROOT / "FSD50K.ground_truth" / f"{split}.csv"
     audio_dir = FSD50K_ROOT / f"FSD50K.{split}_audio_16k"
+    
+    if audio_dir.exists():
+        print(f"[INFO] Utilisation des fichiers convertis 16 kHz : {audio_dir}")
+    else:
+        print(f"[WARN] Aucun dossier 16 kHz trouvé pour '{split}', utilisation des fichiers d'origine.")
+        audio_dir = FSD50K_ROOT / f"FSD50K.{split}_audio"
+
+    if not audio_dir.exists():
+        raise FileNotFoundError(
+            f"Dossier audio FSD50K introuvable : {audio_dir}"
+        )
 
     if not gt_path.exists():
         print(f"[WARN] FSD50K metadata absent : {gt_path}")
         return pd.DataFrame()
 
+    if not audio_dir.exists():
+        raise FileNotFoundError(f"Dossier audio FSD50K introuvable : {audio_dir}")
+
     df = pd.read_csv(gt_path)
 
     rows = []
+    excluded = 0
+    missing_audio = 0
+
     for _, row in df.iterrows():
         fname = str(row["fname"])
         labels = str(row["labels"])
 
-        # FSD50K peut utiliser fname sans extension
         wav_path = audio_dir / f"{fname}.wav"
         if not wav_path.exists():
             wav_path = audio_dir / fname
 
         if not wav_path.exists():
+            missing_audio += 1
             continue
 
         label = map_fsd50k_labels(labels)
+        if label is None:
+            excluded += 1
+            continue
 
         rows.append({
             "filepath": str(wav_path),
@@ -105,24 +115,27 @@ def build_fsd50k_dataframe(split: str) -> pd.DataFrame:
             "label_id": CLASS_TO_ID[label],
         })
 
+    print(f"[INFO] FSD50K {split} exclus hors taxonomie : {excluded}")
+    print(f"[INFO] FSD50K {split} audio manquant : {missing_audio}")
+
     return pd.DataFrame(rows)
 
 
 def balance_dataframe(df: pd.DataFrame, max_per_class: int = 3000) -> pd.DataFrame:
     sampled_parts = []
 
-    for _, class_df in df.groupby("label"):
-        sampled_parts.append(
-            class_df.sample(
-                n=min(len(class_df), max_per_class),
-                random_state=SEED,
-            )
-        )
+    for label_name, class_df in df.groupby("label"):
+        n = min(len(class_df), max_per_class)
+        sampled_parts.append(class_df.sample(n=n, random_state=SEED))
 
-    return pd.concat(sampled_parts, ignore_index=True).sample(
-        frac=1.0,
-        random_state=SEED,
-    ).reset_index(drop=True)
+    if not sampled_parts:
+        raise ValueError("Aucune donnée après filtrage/labellisation.")
+
+    return (
+        pd.concat(sampled_parts, ignore_index=True)
+        .sample(frac=1.0, random_state=SEED)
+        .reset_index(drop=True)
+    )
 
 
 def add_train_val_test_split(df: pd.DataFrame) -> pd.DataFrame:
@@ -164,7 +177,10 @@ def main():
 
     df = pd.concat([esc50_df, fsd_dev_df, fsd_eval_df], ignore_index=True)
     df = df.drop_duplicates(subset=["filepath"])
-    df = df[df["label"].isin(CLASS_TO_ID.keys())]
+    df = df[df["label"].isin(CLASS_TO_ID.keys())].copy()
+
+    # Sécurité : recalcul des ids après suppression de "other"
+    df["label_id"] = df["label"].map(CLASS_TO_ID)
 
     print("[INFO] Distribution brute :")
     print(df["label"].value_counts())

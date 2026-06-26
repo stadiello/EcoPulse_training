@@ -1,25 +1,30 @@
 """
 Mapping des labels ESC-50 et FSD50K vers la taxonomie EcoPulse.
 
-Taxonomie :
+Taxonomie entraînée :
 - bird
 - human
 - motor
 - rain_wind
 - insect
 - animal
-- other
+
+Important :
+- Pas de classe "other" à l'entraînement.
+- Les sons non pertinents retournent None et sont exclus du dataset.
+- Les instruments de musique sont exclus.
+- FSD50K est mappé par labels exacts, pas par sous-chaînes.
 """
 
-import re
+from typing import Optional
 
 
-ESC50_MAP = {
+ESC50_MAP: dict[str, Optional[str]] = {
     # bird
     "chirping_birds": "bird",
     "crow": "bird",
 
-    # human
+    # human : présence humaine réelle
     "crying_baby": "human",
     "sneezing": "human",
     "clapping": "human",
@@ -27,8 +32,9 @@ ESC50_MAP = {
     "coughing": "human",
     "laughing": "human",
     "footsteps": "human",
+    "snoring": "human",
 
-    # motor / machine
+    # motor / perturbation anthropique
     "engine": "motor",
     "helicopter": "motor",
     "chainsaw": "motor",
@@ -55,94 +61,205 @@ ESC50_MAP = {
     "hen": "animal",
     "sheep": "animal",
 
-    # volontairement en other si pas utile terrain
-    "sea_waves": "other",
-    "crackling_fire": "other",
-    "pouring_water": "other",
-    "toilet_flush": "other",
-    "clock_tick": "other",
-    "glass_breaking": "other",
-    "washing_machine": "other",
-    "vacuum_cleaner": "other",
-    "clock_alarm": "other",
-    "keyboard_typing": "other",
-    "mouse_click": "other",
-    "can_opening": "other",
-    "door_wood_knock": "other",
-    "door_wood_creaks": "other",
-    "drinking_sipping": "other",
-    "brushing_teeth": "other",
-    "snoring": "human",
-    "church_bells": "other",
-    "fireworks": "other",
-    "hand_saw": "other",
+    # Hors taxonomie EcoPulse : exclus
+    "sea_waves": None,
+    "crackling_fire": None,
+    "pouring_water": None,
+    "toilet_flush": None,
+    "clock_tick": None,
+    "glass_breaking": None,
+    "washing_machine": None,
+    "vacuum_cleaner": None,
+    "clock_alarm": None,
+    "keyboard_typing": None,
+    "mouse_click": None,
+    "can_opening": None,
+    "door_wood_knock": None,
+    "door_wood_creaks": None,
+    "drinking_sipping": None,
+    "brushing_teeth": None,
+    "church_bells": None,
+    "fireworks": None,
+    "hand_saw": None,
 }
 
 
-FSD50K_KEYWORDS = {
-    "bird": [
-        "bird", "birds", "chirp", "chirping", "tweet", "caw", "crow",
-        "sparrow", "pigeon", "owl", "duck", "goose", "seagull",
-    ],
-    "human": [
-        "speech", "conversation", "talking", "voice", "shout", "scream",
-        "laugh", "laughter", "cry", "crying", "cough", "sneeze",
-        "footstep", "footsteps", "clap", "clapping", "singing",
-        "whisper", "breathing", "snoring","Music","Wind_instrument"
-    ],
-    "motor": [
-        "engine", "motor", "vehicle", "car", "truck", "bus", "motorcycle",
-        "helicopter", "aircraft", "airplane", "train", "chainsaw",
-        "siren", "traffic", "machinery", "machine", "lawn mower",
-    ],
-    "rain_wind": [
-        "rain", "raindrop", "wind", "storm", "thunder", "thunderstorm",
-        "weather", "gust",
-    ],
-    "insect": [
-        "insect", "insects", "cricket", "crickets", "bee", "bees",
-        "mosquito", "fly", "flies", "buzz", "buzzing", "cicada",
-    ],
-    "animal": [
-        "dog", "bark", "cat", "meow", "cow", "moo", "horse", "neigh",
-        "sheep", "pig", "frog", "rooster", "hen", "goat", "animal",
-        "livestock",
-    ],
+FSD50K_LABEL_MAP: dict[str, str] = {
+    # bird
+    "Bird": "bird",
+    "Bird_vocalization_and_bird_call_and_bird_song": "bird",
+    "Chirp_and_tweet": "bird",
+    "Crow": "bird",
+    "Gull_and_seagull": "bird",
+    "Fowl": "bird",
+    "Chicken_and_rooster": "bird",
+
+    # insect
+    "Insect": "insect",
+    "Cricket": "insect",
+    "Buzz": "insect",
+
+    # human : présence humaine réelle
+    "Human_voice": "human",
+    "Speech": "human",
+    "Conversation": "human",
+    "Child_speech_and_kid_speaking": "human",
+    "Female_speech_and_woman_speaking": "human",
+    "Male_speech_and_man_speaking": "human",
+    "Whispering": "human",
+    "Shout": "human",
+    "Yell": "human",
+    "Screaming": "human",
+    "Singing": "human",
+    "Female_singing": "human",
+    "Male_singing": "human",
+    "Laughter": "human",
+    "Chuckle_and_chortle": "human",
+    "Giggle": "human",
+    "Crying_and_sobbing": "human",
+    "Cough": "human",
+    "Sneeze": "human",
+    "Breathing": "human",
+    "Respiratory_sounds": "human",
+    "Sigh": "human",
+    "Gasp": "human",
+    "Applause": "human",
+    "Clapping": "human",
+    "Cheering": "human",
+    "Crowd": "human",
+    "Human_group_actions": "human",
+    "Walk_and_footsteps": "human",
+    "Run": "human",
+    "Hands": "human",
+    "Finger_snapping": "human",
+    "Chewing_and_mastication": "human",
+    "Burping_and_eructation": "human",
+    "Fart": "human",
+
+    # motor / perturbation anthropique
+    "Vehicle": "motor",
+    "Motor_vehicle_(road)": "motor",
+    "Traffic_noise_and_roadway_noise": "motor",
+    "Car": "motor",
+    "Car_passing_by": "motor",
+    "Race_car_and_auto_racing": "motor",
+    "Truck": "motor",
+    "Bus": "motor",
+    "Motorcycle": "motor",
+    "Vehicle_horn_and_car_horn_and_honking": "motor",
+    "Train": "motor",
+    "Rail_transport": "motor",
+    "Subway_and_metro_and_underground": "motor",
+    "Aircraft": "motor",
+    "Fixed-wing_aircraft_and_airplane": "motor",
+    "Boat_and_Water_vehicle": "motor",
+    "Engine": "motor",
+    "Engine_starting": "motor",
+    "Idling": "motor",
+    "Accelerating_and_revving_and_vroom": "motor",
+    "Siren": "motor",
+    "Power_tool": "motor",
+    "Drill": "motor",
+    "Sawing": "motor",
+    "Mechanical_fan": "motor",
+    "Printer": "motor",
+    "Mechanisms": "motor",
+
+    # rain/wind
+    "Rain": "rain_wind",
+    "Raindrop": "rain_wind",
+    "Thunder": "rain_wind",
+    "Thunderstorm": "rain_wind",
+    "Wind": "rain_wind",
+
+    # animal
+    "Animal": "animal",
+    "Wild_animals": "animal",
+    "Domestic_animals_and_pets": "animal",
+    "Dog": "animal",
+    "Bark": "animal",
+    "Cat": "animal",
+    "Meow": "animal",
+    "Purr": "animal",
+    "Growling": "animal",
+    "Frog": "animal",
+    "Livestock_and_farm_animals_and_working_animals": "animal",
+}
+
+# Exclusion explicite : ni human, ni other.
+# Ces labels polluent le signal "présence humaine réelle".
+FSD50K_EXCLUDED_LABELS = {
+    "Music",
+    "Musical_instrument",
+    "Wind_instrument_and_woodwind_instrument",
+    "Brass_instrument",
+    "Guitar",
+    "Electric_guitar",
+    "Acoustic_guitar",
+    "Bass_guitar",
+    "Plucked_string_instrument",
+    "Bowed_string_instrument",
+    "Keyboard_(musical)",
+    "Piano",
+    "Organ",
+    "Accordion",
+    "Harmonica",
+    "Harp",
+    "Percussion",
+    "Drum",
+    "Drum_kit",
+    "Bass_drum",
+    "Snare_drum",
+    "Cymbal",
+    "Crash_cymbal",
+    "Hi-hat",
+    "Tambourine",
+    "Tabla",
+    "Mallet_percussion",
+    "Marimba_and_xylophone",
+    "Glockenspiel",
+    "Gong",
+    "Trumpet",
+    "Strum",
 }
 
 
-def normalize_text(text: str) -> str:
-    text = str(text).lower()
-    text = text.replace("_", " ").replace("-", " ")
-    text = re.sub(r"[^a-z0-9\s]", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
+def map_esc50_label(category: str) -> Optional[str]:
+    return ESC50_MAP.get(str(category).strip(), None)
 
 
-def map_esc50_label(category: str) -> str:
-    category = str(category).strip()
-    return ESC50_MAP.get(category, "other")
-
-
-def map_fsd50k_labels(labels: str) -> str:
+def map_fsd50k_labels(labels: str) -> Optional[str]:
     """
     FSD50K contient souvent plusieurs labels par fichier.
-    On classe par priorité pour éviter que 'animal' avale 'bird' ou 'insect'.
+
+    Stratégie :
+    1. Split exact par virgule.
+    2. Exclusion de la musique/instruments si aucun label utile prioritaire n'est présent.
+    3. Mapping exact label -> classe EcoPulse.
+    4. Priorité explicite si plusieurs classes sont présentes.
+
+    On évite volontairement les tests de sous-chaînes :
+    "Crow" ne doit pas matcher "Crowd".
     """
-    text = normalize_text(labels)
+    fsd_labels = [label.strip() for label in str(labels).split(",") if label.strip()]
+
+    detected_targets = {
+        FSD50K_LABEL_MAP[label]
+        for label in fsd_labels
+        if label in FSD50K_LABEL_MAP
+    }
 
     priority = [
         "bird",
         "insect",
-        "human",
         "motor",
         "rain_wind",
         "animal",
+        "human",
     ]
 
     for target in priority:
-        for kw in FSD50K_KEYWORDS[target]:
-            if normalize_text(kw) in text:
-                return target
+        if target in detected_targets:
+            return target
 
-    return "other"
+    return None

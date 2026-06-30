@@ -8,7 +8,13 @@ from config import MERGED_CSV, CLASSES, BATCH_SIZE
 from audio_features import load_example
 
 
-MODEL_PATH = "models/ecopulse_cnn.keras"
+# MODEL_PATH = "models/classic/ecopulse_cnn.keras"
+MODEL_PATH = "models/classic/ecopulse_cnn_best.keras"
+
+# MODEL_DIR = Path("models")
+# CLASSIC_MODEL_DIR = MODEL_DIR / "classic"
+# QUANTIZED_MODEL_DIR = MODEL_DIR / "quantize"
+# PICO_DIR = MODEL_DIR / "pico"
 
 
 def make_dataset(df: pd.DataFrame) -> tf.data.Dataset:

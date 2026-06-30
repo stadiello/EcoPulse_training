@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.utils.class_weight import compute_class_weight
+import json
+import shutil
 
 from config import (
     MERGED_CSV,
@@ -31,10 +33,12 @@ from audio_features import load_example
 
 MODEL_DIR = Path("models")
 CLASSIC_MODEL_DIR = MODEL_DIR / "classic"
-QUANTIZED_MODEL_DIR = MODEL_DIR / "quantized"
+QUANTIZED_MODEL_DIR = MODEL_DIR / "quantize"
+PICO_DIR = MODEL_DIR / "pico"
 
 CLASSIC_MODEL_DIR.mkdir(exist_ok=True, parents=True)
 QUANTIZED_MODEL_DIR.mkdir(exist_ok=True, parents=True)
+PICO_DIR.mkdir(exist_ok=True, parents=True)
 
 
 def make_dataset(df: pd.DataFrame, training: bool) -> tf.data.Dataset:
@@ -57,6 +61,28 @@ def make_dataset(df: pd.DataFrame, training: bool) -> tf.data.Dataset:
 
     return ds
 
+def export_labels_json(input_shape):
+    labels = {
+        "version": "1.0",
+        "model": "ecopulse_cnn",
+        "classes": CLASSES,
+        "label_to_id": {label: i for i, label in enumerate(CLASSES)},
+        "id_to_label": {str(i): label for i, label in enumerate(CLASSES)},
+        "unknown_threshold": UNKNOWN_THRESHOLD,
+        "input": {
+            "sample_rate": 16000,
+            "n_mels": int(input_shape[1]),
+            "n_frames": int(input_shape[0]),
+            "shape": list(input_shape),
+        },
+    }
+
+    for directory in [MODEL_DIR, CLASSIC_MODEL_DIR, QUANTIZED_MODEL_DIR, PICO_DIR]:
+        directory.mkdir(parents=True, exist_ok=True)
+        with open(directory / "labels.json", "w", encoding="utf-8") as f:
+            json.dump(labels, f, indent=2, ensure_ascii=False)
+
+    print("[OK] labels.json exporté dans models/, classic/, quantize/ et pico/")
 
 def build_tiny_cnn(input_shape, num_classes: int) -> tf.keras.Model:
     """
@@ -127,7 +153,11 @@ def export_int8_tflite(model: tf.keras.Model, rep_ds: tf.data.Dataset):
     out_path = QUANTIZED_MODEL_DIR / "ecopulse_cnn_int8.tflite"
     out_path.write_bytes(tflite_model)
 
+    pico_path = PICO_DIR / "ecopulse_cnn_int8.tflite"
+    shutil.copy2(out_path, pico_path)
+
     print(f"[OK] Export TFLite int8 : {out_path}")
+    print(f"[OK] Copie Pico : {pico_path}")
     print(f"[INFO] Taille modèle : {out_path.stat().st_size / 1024:.1f} ko")
 
 
@@ -155,6 +185,7 @@ def main():
     print(f"[INFO] Input shape : {input_shape}")
     print(f"[INFO] Classes : {CLASSES}")
     print(f"[INFO] Seuil unknown conseillé en inférence : {UNKNOWN_THRESHOLD}")
+    export_labels_json(input_shape)
 
     model = build_tiny_cnn(input_shape=input_shape, num_classes=len(CLASSES))
 

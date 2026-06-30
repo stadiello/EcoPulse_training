@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "model": "ecopulse_cnn",
+  "classes": [
+    "bird",
+    "human",
+    "motor",
+    "rain_wind",
+    "insect",
+    "animal"
+  ],
+  "label_to_id": {
+    "bird": 0,
+    "human": 1,
+    "motor": 2,
+    "rain_wind": 3,
+    "insect": 4,
+    "animal": 5
+  },
+  "id_to_label": {
+    "0": "bird",
+    "1": "human",
+    "2": "motor",
+    "3": "rain_wind",
+    "4": "insect",
+    "5": "animal"
+  },
+  "unknown_threshold": 0.6,
+  "input": {
+    "sample_rate": 16000,
+    "n_mels": 40,
+    "n_frames": 149,
+    "shape": [
+      149,
+      40,
+      1
+    ]
+  }
+}

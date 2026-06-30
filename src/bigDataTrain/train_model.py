@@ -43,6 +43,7 @@ def make_dataset(df: pd.DataFrame, training: bool) -> tf.data.Dataset:
         ds = ds.shuffle(buffer_size=len(df), seed=SEED, reshuffle_each_iteration=True)
 
     ds = ds.map(load_example, num_parallel_calls=tf.data.AUTOTUNE)
+    # ds = ds.map(load_audio, num_parallel_calls=tf.data.AUTOTUNE)
     # ds = ds.map(
     #     lambda fp, y: load_example(fp, y, training=training),
     #     num_parallel_calls=tf.data.AUTOTUNE,
@@ -95,41 +96,29 @@ def representative_dataset(ds: tf.data.Dataset):
 
 
 def export_int8_tflite(model: tf.keras.Model, rep_ds: tf.data.Dataset):
-    for layer in model.layers:
-        layer.trainable = False
+    import tempfile
 
-    @tf.function(
-        input_signature=[
-            tf.TensorSpec(
-                shape=[1, *model.input_shape[1:]],
-                dtype=tf.float32,
-            )
-        ]
-    )
-    def serving_fn(x):
-        return model(x, training=False)
-
-    concrete_func = serving_fn.get_concrete_function()
-
-    converter = tf.lite.TFLiteConverter.from_concrete_functions(
-        [concrete_func],
-        model,
-    )
-
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-
-    def representative_dataset():
+    def representative_dataset_gen():
         for x, _ in rep_ds.unbatch().batch(1).take(200):
             yield [tf.cast(x, tf.float32)]
 
-    converter.representative_dataset = representative_dataset
-    converter.target_spec.supported_ops = [
-        tf.lite.OpsSet.TFLITE_BUILTINS_INT8
-    ]
-    converter.inference_input_type = tf.int8
-    converter.inference_output_type = tf.int8
+    # from_keras_model et from_concrete_functions produisent tous deux un bug MLIR
+    # ("missing attribute 'value'") avec les couches BatchNormalization.
+    # La solution robuste est de sauvegarder en SavedModel sur disque, ce qui
+    # force une sérialisation complète des variables, puis de convertir depuis ce chemin.
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        model.export(tmp_dir)
 
-    tflite_model = converter.convert()
+        converter = tf.lite.TFLiteConverter.from_saved_model(tmp_dir)
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        converter.representative_dataset = representative_dataset_gen
+        converter.target_spec.supported_ops = [
+            tf.lite.OpsSet.TFLITE_BUILTINS_INT8
+        ]
+        converter.inference_input_type = tf.int8
+        converter.inference_output_type = tf.int8
+
+        tflite_model = converter.convert()
 
     out_path = MODEL_DIR / "ecopulse_cnn_int8.tflite"
     out_path.write_bytes(tflite_model)

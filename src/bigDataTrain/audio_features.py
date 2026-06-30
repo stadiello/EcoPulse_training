@@ -10,6 +10,8 @@ Sortie :
 """
 
 import tensorflow as tf
+import librosa
+import numpy as np
 
 from config import (
     SAMPLE_RATE,
@@ -20,21 +22,46 @@ from config import (
 )
 
 
+def _load_audio_numpy(filepath: bytes) -> np.ndarray:
+    """
+    Charge un fichier audio avec librosa au lieu de tf.audio.decode_wav.
+
+    Avantage : supporte les WAV PCM 24 bits, WAV extensible, FLAC, etc.
+    Sortie : mono float32, resamplé à SAMPLE_RATE, longueur N_SAMPLES.
+    """
+    path = filepath.decode("utf-8")
+
+    audio, sr = librosa.load(path, sr=None, mono=True)
+
+    if sr != SAMPLE_RATE:
+        audio = librosa.resample(
+            audio,
+            orig_sr=sr,
+            target_sr=SAMPLE_RATE,
+        )
+
+    audio = audio.astype(np.float32)
+
+    # Normalisation douce pour éviter les amplitudes aberrantes.
+    max_abs = np.max(np.abs(audio)) if audio.size else 0.0
+    if max_abs > 0:
+        audio = audio / max_abs
+
+    if len(audio) > N_SAMPLES:
+        audio = audio[:N_SAMPLES]
+    elif len(audio) < N_SAMPLES:
+        audio = np.pad(audio, (0, N_SAMPLES - len(audio)))
+
+    return audio.astype(np.float32)
+
+
 def decode_wav(filepath: tf.Tensor) -> tf.Tensor:
-    audio_bytes = tf.io.read_file(filepath)
-    audio, sr = tf.audio.decode_wav(audio_bytes, desired_channels=1)
-    audio = tf.squeeze(audio, axis=-1)
-
-    # Hypothèse : dataset déjà en 16 kHz ou converti en amont.
-    # Pour une version production, convertir avec librosa/ffmpeg avant.
-    audio = audio[:N_SAMPLES]
-    padding = N_SAMPLES - tf.shape(audio)[0]
-    audio = tf.cond(
-        padding > 0,
-        lambda: tf.pad(audio, [[0, padding]]),
-        lambda: audio,
+    audio = tf.numpy_function(
+        func=_load_audio_numpy,
+        inp=[filepath],
+        Tout=tf.float32,
     )
-
+    audio.set_shape([N_SAMPLES])
     return audio
 
 

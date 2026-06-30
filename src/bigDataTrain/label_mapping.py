@@ -96,7 +96,9 @@ FSD50K_LABEL_MAP: dict[str, str] = {
 
     # insect
     "Insect": "insect",
+    "Bee": "insect",
     "Cricket": "insect",
+    "Cicada": "insect",
     "Buzz": "insect",
 
     # human : présence humaine réelle
@@ -123,11 +125,11 @@ FSD50K_LABEL_MAP: dict[str, str] = {
     "Respiratory_sounds": "human",
     "Sigh": "human",
     "Gasp": "human",
-    "Applause": "human",
+    "Applause": None,
     "Clapping": "human",
-    "Cheering": "human",
-    "Crowd": "human",
-    "Human_group_actions": "human",
+    "Cheering": None,
+    "Crowd": None,
+    "Human_group_actions": None,
     "Walk_and_footsteps": "human",
     "Run": "human",
     "Hands": "human",
@@ -149,7 +151,7 @@ FSD50K_LABEL_MAP: dict[str, str] = {
     "Vehicle_horn_and_car_horn_and_honking": "motor",
     "Train": "motor",
     "Rail_transport": "motor",
-    "Subway_and_metro_and_underground": "motor",
+    "Subway_and_metro_and_underground": None,
     "Aircraft": "motor",
     "Fixed-wing_aircraft_and_airplane": "motor",
     "Boat_and_Water_vehicle": "motor",
@@ -162,8 +164,8 @@ FSD50K_LABEL_MAP: dict[str, str] = {
     "Drill": "motor",
     "Sawing": "motor",
     "Mechanical_fan": "motor",
-    "Printer": "motor",
-    "Mechanisms": "motor",
+    "Printer": None,
+    "Mechanisms": None,
 
     # rain/wind
     "Rain": "rain_wind",
@@ -221,6 +223,20 @@ FSD50K_EXCLUDED_LABELS = {
     "Gong",
     "Trumpet",
     "Strum",
+    "Camera",
+    "Clock",
+    "Tick-tock",
+    "Bell",
+    "Rattle",
+    "Alarm",
+    "Sliding_door",
+    "Door",
+    "Fireworks",
+    "Fireworks_and_crowd",
+    "Conversation_in_a_stadium",
+    "Printer",
+    "Mechanisms",
+    "Subway_and_metro_and_underground",
 }
 
 
@@ -230,6 +246,9 @@ def map_esc50_label(category: str) -> Optional[str]:
 
 def map_fsd50k_labels(labels: str) -> str | None:
     fsd_labels = [label.strip() for label in str(labels).split(",")]
+
+    if any(label in FSD50K_EXCLUDED_LABELS for label in fsd_labels):
+        return None
 
     detected_targets = set()
 

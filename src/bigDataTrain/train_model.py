@@ -30,7 +30,11 @@ from audio_features import load_example
 
 
 MODEL_DIR = Path("models")
-MODEL_DIR.mkdir(exist_ok=True, parents=True)
+CLASSIC_MODEL_DIR = MODEL_DIR / "classic"
+QUANTIZED_MODEL_DIR = MODEL_DIR / "quantized"
+
+CLASSIC_MODEL_DIR.mkdir(exist_ok=True, parents=True)
+QUANTIZED_MODEL_DIR.mkdir(exist_ok=True, parents=True)
 
 
 def make_dataset(df: pd.DataFrame, training: bool) -> tf.data.Dataset:
@@ -120,7 +124,7 @@ def export_int8_tflite(model: tf.keras.Model, rep_ds: tf.data.Dataset):
 
         tflite_model = converter.convert()
 
-    out_path = MODEL_DIR / "ecopulse_cnn_int8.tflite"
+    out_path = QUANTIZED_MODEL_DIR / "ecopulse_cnn_int8.tflite"
     out_path.write_bytes(tflite_model)
 
     print(f"[OK] Export TFLite int8 : {out_path}")
@@ -164,7 +168,7 @@ def main():
 
     callbacks = [
         tf.keras.callbacks.ModelCheckpoint(
-            MODEL_DIR / "ecopulse_cnn_best.keras",
+            CLASSIC_MODEL_DIR / "ecopulse_cnn_best.keras",
             monitor="val_accuracy",
             save_best_only=True,
             mode="max",
@@ -208,7 +212,7 @@ def main():
     test_loss, test_acc = model.evaluate(test_ds)
     print(f"[RESULT] test_loss={test_loss:.4f} test_acc={test_acc:.4f}")
 
-    keras_path = MODEL_DIR / "ecopulse_cnn.keras"
+    keras_path = CLASSIC_MODEL_DIR / "ecopulse_cnn.keras"
     model.save(keras_path)
     print(f"[OK] Modèle Keras : {keras_path}")
 
